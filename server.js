@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const MintRecord = require('./models/MintRecord');
+const MintModel = require('./models/Mint');
 const TransferRecord = require('./models/TransferRecord');
 const TransactionRecord = require('./models/TransactionRecord');
 const cors = require("cors");
@@ -17,13 +17,6 @@ app.use(cors());
 mongoose.connect(process.env.MONGODB_URI);
 const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
-
-const Schema = mongoose.Schema;
-const ProductSchema = new Schema({
-  blockchainId: { type: Number },
-  name: { type: String }
-});
-const ProductModel = mongoose.model("ProductModel", ProductSchema);
 
 // Load the contract ABI and address
 const contractABI = [
@@ -336,6 +329,12 @@ const contractABI = [
 				"internalType": "address",
 				"name": "to",
 				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
 			},
 			{
 				"indexed": false,
@@ -748,8 +747,8 @@ const contractABI = [
 		"type": "function"
 	}
 ]
-const contractAddress = '0x381445710b5e73d34aF196c53A3D5cDa58EDBf7A';
-const nodeProvider = "HTTP://127.0.0.1:8545"; //本地链
+const contractAddress = '0x8438Ad1C834623CfF278AB6829a248E37C2D7E3f';
+const nodeProvider = "http://127.0.0.1:8545"; //本地链
 //rpc
 const customHttpProvider = new ethers.providers.JsonRpcProvider(nodeProvider);
 //实例合约
@@ -759,24 +758,32 @@ const contract = new ethers.Contract(
 	customHttpProvider
 );
 
-//监听
-contract.on("mintEvent", async (_newOwner, _productId) => {
-    console.log('监听mintEvent',_newOwner,_productId);
-    //数据库操作
-    
+//监听mint事件，然后存入数据
+console.log('contract.on',contract.on)
+contract.on("mintEvent", async (to, tokenId, uri) => {
+    console.log('监听mintEvent',to, tokenId, uri);
+    try {
+		const newMint = new MintModel({
+		  to,
+		  tokenId,
+		  uri,
+		  timestamp: new Date(), 
+		});
+		await newMint.save()
+
+		console.log('Mint event data saved to MongoDB');
+	  } catch (error) {
+		console.error('Error saving mint event data:', error);
+	  }
 });
+
 contract.on("productTransferEvent", async (_productId, _newOwner) => {
     console.log('监听transfer',_productId, _newOwner);
-    //数据库操作
-    await ProductModel.updateOne(
-      { blockchainId: parseInt(_productId.toString()) },
-      { $set: { owner: _newOwner } }
-    );
 });
 
 // Example API endpoint to get mint records
 app.get('/mint-records', async (req, res) => {
-  const records = await MintRecord.find();
+  const records = await MintModel.find();
   res.json(records);
 });
 
