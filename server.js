@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const MintModel = require('./models/Mint');
-const TransferRecord = require('./models/TransferRecord');
+const TransferModel = require('./models/TransferRecord');
 const TransactionRecord = require('./models/TransactionRecord');
 const cors = require("cors");
 const { ethers } = require("ethers");
@@ -758,8 +758,12 @@ const contract = new ethers.Contract(
 	customHttpProvider
 );
 
-//监听mint事件，然后存入数据
-console.log('contract.on',contract.on)
+console.log('contract',contract.removeAllListeners)
+// 移除现有的 Transfer 事件监听器，没有用，很烦
+contract.removeAllListeners("mintEvent");
+contract.removeAllListeners("Transfer");
+
+//监听mint事件，增
 contract.on("mintEvent", async (to, tokenId, uri) => {
     console.log('监听mintEvent',to, tokenId, uri);
     try {
@@ -768,36 +772,61 @@ contract.on("mintEvent", async (to, tokenId, uri) => {
 		  tokenId,
 		  uri,
 		  timestamp: new Date(), 
+		  name:'Duck'
 		});
 		await newMint.save()
 
-		console.log('Mint event data saved to MongoDB');
+		console.log('Mint saved to MongoDB');
 	  } catch (error) {
-		console.error('Error saving mint event data:', error);
+		console.error('Error saving mint:', error);
 	  }
 });
 
-contract.on("productTransferEvent", async (_productId, _newOwner) => {
-    console.log('监听transfer',_productId, _newOwner);
+contract.on("Transfer", async (from, to, tokenId) => {
+    console.log('监听：Transfer',from, to, tokenId);
+	try {
+		const newTransfer = new TransferModel({
+			from, 
+			to, 
+			tokenId,
+			timestamp: new Date(), 
+		});
+		await newTransfer.save()
+		console.log('Transfer saved to MongoDB');
+
+		// 更新mints记录
+        const updatedMintRecord = await MintModel.findOneAndUpdate(
+            { tokenId },
+            { to },
+            { new: true }
+        );
+
+        if (updatedMintRecord) {
+            console.log('Mint record updated to new address:', updatedMintRecord);
+        } else {
+            console.log('Mint record not found for tokenId:', tokenId);
+        }
+	  } catch (error) {
+		console.error('Error saving transfer:', error);
+	  }
 });
 
-// Example API endpoint to get mint records
+
+//查
 app.get('/mint-records', async (req, res) => {
   const records = await MintModel.find();
   res.json(records);
 });
-
-// Example API endpoint to get transfer records
 app.get('/transfer-records', async (req, res) => {
-  const records = await TransferRecord.find();
+  const records = await TransferModel.find();
   res.json(records);
 });
 
-// Example API endpoint to get transaction records
-app.get('/transaction-records', async (req, res) => {
-  const records = await TransactionRecord.find();
-  res.json(records);
-});
+// // Example API endpoint to get transaction records
+// app.get('/transaction-records', async (req, res) => {
+//   const records = await TransactionRecord.find();
+//   res.json(records);
+// });
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
