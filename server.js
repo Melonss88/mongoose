@@ -3,10 +3,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const MintModel = require('./models/Mint');
 const TransferModel = require('./models/TransferRecord');
-const TransactionRecord = require('./models/TransactionRecord');
 const cors = require("cors");
 const { ethers } = require("ethers");
-// import { ethers } from "ethers";
+const axios = require('axios');
 
 const app = express();
 const port = 4000;
@@ -20,24 +19,6 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 
 // Load the contract ABI and address
 const contractABI = [
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "tokenId",
-				"type": "uint256"
-			}
-		],
-		"name": "approve",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
 	{
 		"inputs": [
 			{
@@ -351,19 +332,173 @@ const contractABI = [
 		"inputs": [
 			{
 				"indexed": false,
-				"internalType": "uint256",
-				"name": "_productId",
-				"type": "uint256"
+				"internalType": "address",
+				"name": "_from",
+				"type": "address"
 			},
 			{
 				"indexed": false,
 				"internalType": "address",
-				"name": "_newOwner",
+				"name": "_to",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "_tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "nftTransferEvent",
+		"type": "event"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "approve",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
 				"type": "address"
 			}
 		],
-		"name": "productTransferEvent",
-		"type": "event"
+		"name": "balanceOf",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "getApproved",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "owner",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "operator",
+				"type": "address"
+			}
+		],
+		"name": "isApprovedForAll",
+		"outputs": [
+			{
+				"internalType": "bool",
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "name",
+		"outputs": [
+			{
+				"internalType": "string",
+				"name": "",
+				"type": "string"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "_from",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "_to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "_tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "nftTransfer",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "ownerOf",
+		"outputs": [
+			{
+				"internalType": "address",
+				"name": "",
+				"type": "address"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
 	},
 	{
 		"inputs": [],
@@ -457,167 +592,6 @@ const contractABI = [
 		"name": "setApprovalForAll",
 		"outputs": [],
 		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "_productId",
-				"type": "uint256"
-			},
-			{
-				"internalType": "address",
-				"name": "_to",
-				"type": "address"
-			}
-		],
-		"name": "testTransfer",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "from",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "to",
-				"type": "address"
-			},
-			{
-				"internalType": "uint256",
-				"name": "tokenId",
-				"type": "uint256"
-			}
-		],
-		"name": "transferFrom",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "newOwner",
-				"type": "address"
-			}
-		],
-		"name": "transferOwnership",
-		"outputs": [],
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "owner",
-				"type": "address"
-			}
-		],
-		"name": "balanceOf",
-		"outputs": [
-			{
-				"internalType": "uint256",
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "tokenId",
-				"type": "uint256"
-			}
-		],
-		"name": "getApproved",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "address",
-				"name": "owner",
-				"type": "address"
-			},
-			{
-				"internalType": "address",
-				"name": "operator",
-				"type": "address"
-			}
-		],
-		"name": "isApprovedForAll",
-		"outputs": [
-			{
-				"internalType": "bool",
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "name",
-		"outputs": [
-			{
-				"internalType": "string",
-				"name": "",
-				"type": "string"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [],
-		"name": "owner",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"inputs": [
-			{
-				"internalType": "uint256",
-				"name": "tokenId",
-				"type": "uint256"
-			}
-		],
-		"name": "ownerOf",
-		"outputs": [
-			{
-				"internalType": "address",
-				"name": "",
-				"type": "address"
-			}
-		],
-		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -731,23 +705,40 @@ const contractABI = [
 		"inputs": [
 			{
 				"internalType": "address",
-				"name": "owner",
+				"name": "from",
+				"type": "address"
+			},
+			{
+				"internalType": "address",
+				"name": "to",
+				"type": "address"
+			},
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "transferFrom",
+		"outputs": [],
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "address",
+				"name": "newOwner",
 				"type": "address"
 			}
 		],
-		"name": "walletOfOwner",
-		"outputs": [
-			{
-				"internalType": "uint256[]",
-				"name": "",
-				"type": "uint256[]"
-			}
-		],
-		"stateMutability": "view",
+		"name": "transferOwnership",
+		"outputs": [],
+		"stateMutability": "nonpayable",
 		"type": "function"
 	}
 ]
-const contractAddress = '0x8438Ad1C834623CfF278AB6829a248E37C2D7E3f';
+const contractAddress = '0x057ef64E23666F000b34aE31332854aCBd1c8544';
 const nodeProvider = "http://127.0.0.1:8545"; //本地链
 //rpc
 const customHttpProvider = new ethers.providers.JsonRpcProvider(nodeProvider);
@@ -758,75 +749,121 @@ const contract = new ethers.Contract(
 	customHttpProvider
 );
 
-console.log('contract',contract.removeAllListeners)
-// 移除现有的 Transfer 事件监听器，没有用，很烦
-contract.removeAllListeners("mintEvent");
-contract.removeAllListeners("Transfer");
+async function fetchDataAndSave(to, tokenId, uri) {
+	try {
+	  // 获取并解析 JSON 数据
+	  const response = await axios.get(uri);
+	  const jsonData = response.data;
+  
+	  // 创建新记录或更新现有记录
+	  const mint = new MintModel({
+		to,
+		tokenId,
+		uri,
+		timestamp: new Date(),
+		name: jsonData.name,
+		imageURL: jsonData.imageURL,
+		color: jsonData.color,
+		gender: jsonData.gender,
+		rarity: jsonData.rarity,
+		price: jsonData.price,
+		accessories: jsonData.accessories
+	  });
+  
+	  // 保存数据
+	  await mint.save();
+  
+	  console.log('Mint saved in MongoDB:', mint);
+	} catch (error) {
+	  console.error('Error saving mint:', error);
+	}
+}
 
-//监听mint事件，增
+// //监听mint事件，增
 contract.on("mintEvent", async (to, tokenId, uri) => {
     console.log('监听mintEvent',to, tokenId, uri);
-    try {
-		const newMint = new MintModel({
-		  to,
-		  tokenId,
-		  uri,
-		  timestamp: new Date(), 
-		  name:'Duck'
-		});
-		await newMint.save()
+	fetchDataAndSave(to, tokenId, uri);
 
-		console.log('Mint saved to MongoDB');
-	  } catch (error) {
-		console.error('Error saving mint:', error);
-	  }
 });
 
-contract.on("Transfer", async (from, to, tokenId) => {
-    console.log('监听：Transfer',from, to, tokenId);
+// 监听nftTransferEvent事件
+contract.on("nftTransferEvent", async (from, to, tokenId) => {
+	console.log('监听nftTransferEvent', from, to, tokenId);
 	try {
-		const newTransfer = new TransferModel({
-			from, 
-			to, 
-			tokenId,
-			timestamp: new Date(), 
-		});
-		await newTransfer.save()
-		console.log('Transfer saved to MongoDB');
-
+	  const newTransfer = new TransferModel({
+		from,
+		to,
+		tokenId,
+		timestamp: new Date(),
+	  });
+	  await newTransfer.save();
+	  console.log('Transfer saved to MongoDB');
+  
+	  // 获取新的URI
+	  const mintRecord = await MintModel.findOne({ tokenId });
+	  if (mintRecord) {
+		const response = await axios.get(mintRecord.uri);
+		const jsonData = response.data;
+  
 		// 更新mints记录
-        const updatedMintRecord = await MintModel.findOneAndUpdate(
-            { tokenId },
-            { to },
-            { new: true }
-        );
-
-        if (updatedMintRecord) {
-            console.log('Mint record updated to new address:', updatedMintRecord);
-        } else {
-            console.log('Mint record not found for tokenId:', tokenId);
-        }
-	  } catch (error) {
-		console.error('Error saving transfer:', error);
+		const updatedMintRecord = await MintModel.findOneAndUpdate(
+		  { tokenId },
+		  {
+			to,
+			name: jsonData.name,
+			imageURL: jsonData.imageURL,
+			color: jsonData.color,
+			gender: jsonData.gender,
+			rarity: jsonData.rarity,
+			price: jsonData.price,
+			accessories: jsonData.accessories,
+			timestamp: new Date()
+		  },
+		  { new: true }
+		);
+  
+		if (updatedMintRecord) {
+		  console.log('Mint record updated to new address:', updatedMintRecord);
+		} else {
+		  console.log('Mint record not found for tokenId:', tokenId);
+		}
+	  } else {
+		console.log('Mint record not found for tokenId:', tokenId);
 	  }
-});
+	} catch (error) {
+	  console.error('Error saving transfer:', error);
+	}
+  });
 
 
 //查
-app.get('/mint-records', async (req, res) => {
+app.get('/mint/records', async (req, res) => {
   const records = await MintModel.find();
   res.json(records);
 });
-app.get('/transfer-records', async (req, res) => {
+app.get('/transfer/records', async (req, res) => {
   const records = await TransferModel.find();
   res.json(records);
 });
+app.get('/nft/details/:tokenId', async (req, res) => {
+	try {
+	  const { tokenId } = req.params;
+	  console.log(`Fetching NFT details for tokenId: ${tokenId}`);
+	  
+	  const record = await MintModel.findOne({ tokenId });
+	  if (record) {
+		console.log(`Record found: ${record}`);
+		res.json(record);
+	  } else {
+		console.log(`Record not found for tokenId: ${tokenId}`);
+		res.status(404).json({ error: 'Record not found' });
+	  }
+	} catch (error) {
+	  console.error('Error fetching NFT details:', error);
+	  res.status(500).json({ error: 'Error fetching NFT details' });
+	}
+});
 
-// // Example API endpoint to get transaction records
-// app.get('/transaction-records', async (req, res) => {
-//   const records = await TransactionRecord.find();
-//   res.json(records);
-// });
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
