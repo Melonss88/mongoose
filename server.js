@@ -1,11 +1,13 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const MintModel = require('./models/Mint');
-const TransferModel = require('./models/TransferRecord');
 const cors = require("cors");
 const { ethers } = require("ethers");
 const axios = require('axios');
+const MintModel = require('./models/Mint');
+const TransferModel = require('./models/TransferRecord');
+const BannerConfigModel = require('./models/BannerConfig')
+const PopularNFTsModel = require('./models/PopularNFTs')
 
 const app = express();
 const port = 4000;
@@ -749,6 +751,7 @@ const contract = new ethers.Contract(
 	customHttpProvider
 );
 
+//listen
 async function fetchDataAndSave(to, tokenId, uri) {
 	try {
 	  // 获取并解析 JSON 数据
@@ -778,12 +781,10 @@ async function fetchDataAndSave(to, tokenId, uri) {
 	  console.error('Error saving mint:', error);
 	}
 }
-
 // //监听mint事件，增
 contract.on("mintEvent", async (to, tokenId, uri) => {
     console.log('监听mintEvent',to, tokenId, uri);
-	fetchDataAndSave(to, tokenId, uri);
-
+	// fetchDataAndSave(to, tokenId, uri);
 });
 
 // 监听nftTransferEvent事件
@@ -833,7 +834,105 @@ contract.on("nftTransferEvent", async (from, to, tokenId) => {
 	} catch (error) {
 	  console.error('Error saving transfer:', error);
 	}
-  });
+});
+
+
+//add
+//banner/config数据
+async function addBannerConfig () {
+	const bannerConfig = [
+		{
+		  imgURL: 'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/banner1.png',
+		  title: "Congratulations!",
+		  text: "Melon, on passing your graduation project!"
+		},
+		{
+		  imgURL: 'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/banner2.png',
+		  title: "NodeMonkes",
+		  text: "Leads NFT sales with over US$660K in a day"
+		},
+		{
+		  imgURL: 'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/banner3.png',
+		  title: "Kendu Chads",
+		  text: "NFT marketplace transforms the digital art world"
+		},
+		{
+		  imgURL: 'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/banner4.png',
+		  title: "Solana’s",
+		  text: "DogeZuki tops daily NFT market"
+		}
+	];
+	try {
+		for (let i = 0; i < bannerConfig.length; i++) {
+			const config = new BannerConfigModel({
+			  id: i,  
+			  title: bannerConfig[i].title,
+			  content: bannerConfig[i].text,
+			  imgURL: bannerConfig[i].imgURL
+			});
+	  
+			await config.save();
+		}
+		console.log('add bannerConfig success:', );
+	}
+	catch(error) {
+		console.error('add bannerConfig error:', error);
+	}
+}
+// addBannerConfig ()
+
+///popular/nfts数据
+async function addpPopularNFTs() {
+	const popularConfig = [
+		{
+		  id: "0",
+		  name: "duck",
+		  price: "0.0005",
+		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular1.png'
+		},
+		{
+		  id: "1",
+		  name: "duck",
+		  price: "0.001",
+		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular2.png'
+		},
+		{
+		  id: "2",
+		  name: "duck",
+		  price: "0.0001",
+		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular3.png'
+		},
+		{
+		  id: "3",
+		  name: "duck",
+		  price: "0.0005",
+		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular4.png'
+		},
+		{
+		  id: "4",
+		  name: "duck",
+		  price: "0.005",
+		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular5.png'
+		}
+	  ];
+	try {
+		for (let i = 0; i < popularConfig.length; i++) {
+			const config = new PopularNFTsModel({
+			  id: popularConfig[i].id,  
+			  name: popularConfig[i].name,
+			  price: popularConfig[i].price,
+			  imgURL: popularConfig[i].imgURL
+			});
+	  
+			await config.save();
+		}
+		console.log('add popularConfig success:', );
+	}
+	catch(error) {
+		console.error('add popularConfig error:', error);
+	}
+}
+// addpPopularNFTs()
 
 
 //查
@@ -862,6 +961,14 @@ app.get('/nft/details/:tokenId', async (req, res) => {
 	  console.error('Error fetching NFT details:', error);
 	  res.status(500).json({ error: 'Error fetching NFT details' });
 	}
+});
+app.get('/banner/config', async (req, res) => {
+	const records = await BannerConfigModel.find();
+	res.json(records);
+});
+app.get('/popular/nfts', async (req, res) => {
+	const records = await PopularNFTsModel.find();
+	res.json(records);
 });
 
 
