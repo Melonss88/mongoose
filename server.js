@@ -8,6 +8,7 @@ const MintModel = require('./models/Mint');
 const TransferModel = require('./models/TransferRecord');
 const BannerConfigModel = require('./models/BannerConfig')
 const PopularNFTsModel = require('./models/PopularNFTs')
+const filterConfigModel = require('./models/Filter')
 
 const app = express();
 const port = 4000;
@@ -740,7 +741,7 @@ const contractABI = [
 		"type": "function"
 	}
 ]
-const contractAddress = '0x057ef64E23666F000b34aE31332854aCBd1c8544';
+const contractAddress = '0xbdEd0D2bf404bdcBa897a74E6657f1f12e5C6fb6';
 const nodeProvider = "http://127.0.0.1:8545"; //本地链
 //rpc
 const customHttpProvider = new ethers.providers.JsonRpcProvider(nodeProvider);
@@ -784,7 +785,7 @@ async function fetchDataAndSave(to, tokenId, uri) {
 // //监听mint事件，增
 contract.on("mintEvent", async (to, tokenId, uri) => {
     console.log('监听mintEvent',to, tokenId, uri);
-	// fetchDataAndSave(to, tokenId, uri);
+	fetchDataAndSave(to, tokenId, uri);
 });
 
 // 监听nftTransferEvent事件
@@ -881,7 +882,7 @@ async function addBannerConfig () {
 }
 // addBannerConfig ()
 
-///popular/nfts数据
+// popular/nfts数据
 async function addpPopularNFTs() {
 	const popularConfig = [
 		{
@@ -934,6 +935,52 @@ async function addpPopularNFTs() {
 }
 // addpPopularNFTs()
 
+// filter配置数据
+async function addFilterConfig() {
+	const filterConfig = [
+		{
+			name:'Name',
+			items:['All','Duck']
+		},
+		{
+			name:'Gender',
+			items:['All', 'Male', 'Female']
+		},
+		{
+			name:'Rarity',
+			items:['All','1','2','3','4','5']
+		},
+		{
+			name:'Color',
+			items:['All','Green','Blue','Purple','Golden','Red']
+		},
+		{
+			name:'Accessories',
+			items:['All','Yes','No']
+		},
+		{
+			name:'Price',
+			items:''
+		}
+	]
+
+	try {
+		for (let i = 0; i < filterConfig.length; i++) {
+			const filter = new filterConfigModel({
+				name: filterConfig[i].name,
+				items: filterConfig[i].items
+			});
+	  
+			await filter.save();
+		}
+		console.error('add addFilterConfig success:', filter);
+	}
+	catch(error) {
+		console.error('add addFilterConfig error:', error);
+	}
+}
+// addFilterConfig()
+
 
 //查
 app.get('/mint/records', async (req, res) => {
@@ -968,6 +1015,10 @@ app.get('/banner/config', async (req, res) => {
 });
 app.get('/popular/nfts', async (req, res) => {
 	const records = await PopularNFTsModel.find();
+	res.json(records);
+});
+app.get('/filter/config', async (req, res) => {
+	const records = await filterConfigModel.find();
 	res.json(records);
 });
 
