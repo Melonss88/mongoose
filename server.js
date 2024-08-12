@@ -350,6 +350,12 @@ const contractABI = [
 				"internalType": "uint256",
 				"name": "_tokenId",
 				"type": "uint256"
+			},
+			{
+				"indexed": false,
+				"internalType": "uint256",
+				"name": "price",
+				"type": "uint256"
 			}
 		],
 		"name": "nftTransferEvent",
@@ -390,6 +396,19 @@ const contractABI = [
 			}
 		],
 		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
+				"internalType": "uint256",
+				"name": "tokenId",
+				"type": "uint256"
+			}
+		],
+		"name": "buy",
+		"outputs": [],
+		"stateMutability": "payable",
 		"type": "function"
 	},
 	{
@@ -741,7 +760,7 @@ const contractABI = [
 		"type": "function"
 	}
 ]
-const contractAddress = '0xbdEd0D2bf404bdcBa897a74E6657f1f12e5C6fb6';
+const contractAddress = '0x781da48Ea17664D0b53d7645D50C5dAe93d27887';
 const nodeProvider = "http://127.0.0.1:8545"; //本地链
 //rpc
 const customHttpProvider = new ethers.providers.JsonRpcProvider(nodeProvider);
@@ -777,7 +796,7 @@ async function fetchDataAndSave(to, tokenId, uri) {
 	  // 保存数据
 	  await mint.save();
   
-	  console.log('Mint saved in MongoDB:', mint);
+	  console.log('Mint saved in MongoDB Success!');
 	} catch (error) {
 	  console.error('Error saving mint:', error);
 	}
@@ -785,21 +804,22 @@ async function fetchDataAndSave(to, tokenId, uri) {
 // //监听mint事件，增
 contract.on("mintEvent", async (to, tokenId, uri) => {
     console.log('监听mintEvent',to, tokenId, uri);
-	fetchDataAndSave(to, tokenId, uri);
+	// fetchDataAndSave(to, tokenId, uri);
 });
 
 // 监听nftTransferEvent事件
-contract.on("nftTransferEvent", async (from, to, tokenId) => {
-	console.log('监听nftTransferEvent', from, to, tokenId);
+contract.on("nftTransferEvent", async (from, to, tokenId, price) => {
+	console.log('监听nftTransferEvent', from, to, tokenId, price);
 	try {
 	  const newTransfer = new TransferModel({
 		from,
 		to,
 		tokenId,
+		price: ethers.utils.formatUnits(price),
 		timestamp: new Date(),
 	  });
 	  await newTransfer.save();
-	  console.log('Transfer saved to MongoDB');
+	  console.log('Transfer saved to MongoDB success~!');
   
 	  // 获取新的URI
 	  const mintRecord = await MintModel.findOne({ tokenId });
@@ -825,7 +845,7 @@ contract.on("nftTransferEvent", async (from, to, tokenId) => {
 		);
   
 		if (updatedMintRecord) {
-		  console.log('Mint record updated to new address:', updatedMintRecord);
+		  console.log('Mint record updated to new address ！');
 		} else {
 		  console.log('Mint record not found for tokenId:', tokenId);
 		}
@@ -939,27 +959,27 @@ async function addpPopularNFTs() {
 async function addFilterConfig() {
 	const filterConfig = [
 		{
-			name:'Name',
-			items:['All','Duck']
+			name:'name',
+			items:['all','duck']
 		},
 		{
-			name:'Gender',
-			items:['All', 'Male', 'Female']
+			name:'gender',
+			items:['all', 'male', 'female']
 		},
 		{
-			name:'Rarity',
-			items:['All','1','2','3','4','5']
+			name:'rarity',
+			items:['all','1','2','3','4','5']
 		},
 		{
-			name:'Color',
-			items:['All','Green','Blue','Purple','Golden','Red']
+			name:'color',
+			items:['all','green','blue','purple','golden','red']
 		},
 		{
-			name:'Accessories',
-			items:['All','Yes','No']
+			name:'accessories',
+			items:['all','yes','no']
 		},
 		{
-			name:'Price',
+			name:'price',
 			items:''
 		}
 	]
@@ -973,7 +993,7 @@ async function addFilterConfig() {
 	  
 			await filter.save();
 		}
-		console.error('add addFilterConfig success:', filter);
+		console.log('add addFilterConfig success!');
 	}
 	catch(error) {
 		console.error('add addFilterConfig error:', error);
@@ -983,10 +1003,28 @@ async function addFilterConfig() {
 
 
 //查
-app.get('/mint/records', async (req, res) => {
-  const records = await MintModel.find();
-  res.json(records);
+app.post('/mint/records', async (req, res) => {
+	const filters = req.body || {}; 
+  
+	let query = {};
+  
+	if (typeof filters === 'object' && filters !== null) {
+	  Object.keys(filters).forEach((key) => {
+		if (filters[key] && filters[key] !== 'All') {
+		  query[key] = filters[key];
+		}
+	  });
+	}
+  
+	try {
+	  const records = await MintModel.find(query);
+	  res.json(records);
+	} catch (error) {
+	  console.error('获取 mint 记录时出错:', error);
+	  res.status(500).json({ error: '获取 mint 记录时出错' });
+	}
 });
+  
 app.get('/transfer/records', async (req, res) => {
   const records = await TransferModel.find();
   res.json(records);
@@ -994,11 +1032,8 @@ app.get('/transfer/records', async (req, res) => {
 app.get('/nft/details/:tokenId', async (req, res) => {
 	try {
 	  const { tokenId } = req.params;
-	  console.log(`Fetching NFT details for tokenId: ${tokenId}`);
-	  
 	  const record = await MintModel.findOne({ tokenId });
 	  if (record) {
-		console.log(`Record found: ${record}`);
 		res.json(record);
 	  } else {
 		console.log(`Record not found for tokenId: ${tokenId}`);

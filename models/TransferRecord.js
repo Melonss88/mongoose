@@ -5,6 +5,7 @@ const transferRecordSchema = new mongoose.Schema({
   to: String,
   tokenId: Number,
   timestamp: Date,
+  price:String
 });
 
 module.exports = mongoose.model('TransferRecord', transferRecordSchema);
