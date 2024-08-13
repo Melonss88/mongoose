@@ -12,6 +12,8 @@ const filterConfigModel = require('./models/Filter')
 
 const app = express();
 const port = 4000;
+// 解析 JSON 请求体
+app.use(express.json());
 //跨域
 app.use(cors());
 
@@ -760,7 +762,7 @@ const contractABI = [
 		"type": "function"
 	}
 ]
-const contractAddress = '0x781da48Ea17664D0b53d7645D50C5dAe93d27887';
+const contractAddress = '0x6071B8Ae9af496B67A14e0911e37c6b122a0bb2a';
 const nodeProvider = "http://127.0.0.1:8545"; //本地链
 //rpc
 const customHttpProvider = new ethers.providers.JsonRpcProvider(nodeProvider);
@@ -774,11 +776,9 @@ const contract = new ethers.Contract(
 //listen
 async function fetchDataAndSave(to, tokenId, uri) {
 	try {
-	  // 获取并解析 JSON 数据
 	  const response = await axios.get(uri);
 	  const jsonData = response.data;
   
-	  // 创建新记录或更新现有记录
 	  const mint = new MintModel({
 		to,
 		tokenId,
@@ -801,10 +801,50 @@ async function fetchDataAndSave(to, tokenId, uri) {
 	  console.error('Error saving mint:', error);
 	}
 }
+
+async function fetchDataAndSaveNew(to, tokenId, uri) {
+    try {
+		console.log('uri',uri)
+        const response = await axios.get(uri);
+        const jsonDataList = response.data;
+        const tokenIdNum = Number(tokenId);
+        const jsonData = jsonDataList[tokenIdNum];
+
+        if (!jsonData) {
+            console.log(`No data found for Token ID ${tokenId}. Skipping...`);
+            return;
+        }
+        const existingMint = await MintModel.findOne({ tokenId: tokenIdNum });
+        if (existingMint) {
+            console.log(`Token ID ${tokenId} already exists. 如果出现这个情况，就是出问题了，请注意！！！`);
+            return; 
+        }
+
+        const mint = new MintModel({
+            to,
+            tokenId: tokenIdNum, 
+            uri,
+            timestamp: new Date(),
+            name: jsonData.name,
+            imageURL: jsonData.imageURL,
+            color: jsonData.color,
+            gender: jsonData.gender,
+            rarity: jsonData.rarity,
+            price: jsonData.price,
+            accessories: jsonData.accessories
+        });
+
+        await mint.save();
+        console.log(`Mint with Token ID ${tokenId} saved in MongoDB!`);
+    } catch (error) {
+        console.error('Error saving mint:', error);
+    }
+}
 // //监听mint事件，增
 contract.on("mintEvent", async (to, tokenId, uri) => {
-    console.log('监听mintEvent',to, tokenId, uri);
+    console.log('listen mintEvent to~');
 	// fetchDataAndSave(to, tokenId, uri);
+	await fetchDataAndSaveNew(to, tokenId, uri);
 });
 
 // 监听nftTransferEvent事件
@@ -907,31 +947,31 @@ async function addpPopularNFTs() {
 	const popularConfig = [
 		{
 		  id: "0",
-		  name: "duck",
+		  name: "ducklon",
 		  price: "0.0005",
 		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular1.png'
 		},
 		{
 		  id: "1",
-		  name: "duck",
+		  name: "ducklon",
 		  price: "0.001",
 		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular2.png'
 		},
 		{
 		  id: "2",
-		  name: "duck",
+		  name: "ducklon",
 		  price: "0.0001",
 		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular3.png'
 		},
 		{
 		  id: "3",
-		  name: "duck",
+		  name: "ducklon",
 		  price: "0.0005",
 		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular4.png'
 		},
 		{
 		  id: "4",
-		  name: "duck",
+		  name: "ducklon",
 		  price: "0.005",
 		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular5.png'
 		}
@@ -960,7 +1000,7 @@ async function addFilterConfig() {
 	const filterConfig = [
 		{
 			name:'name',
-			items:['all','duck']
+			items:['all','ducklon','sailor']
 		},
 		{
 			name:'gender',
@@ -1004,26 +1044,25 @@ async function addFilterConfig() {
 
 //查
 app.post('/mint/records', async (req, res) => {
-	const filters = req.body || {}; 
-  
-	let query = {};
-  
-	if (typeof filters === 'object' && filters !== null) {
-	  Object.keys(filters).forEach((key) => {
-		if (filters[key] && filters[key] !== 'All') {
-		  query[key] = filters[key];
-		}
-	  });
-	}
-  
-	try {
-	  const records = await MintModel.find(query);
-	  res.json(records);
-	} catch (error) {
-	  console.error('获取 mint 记录时出错:', error);
-	  res.status(500).json({ error: '获取 mint 记录时出错' });
-	}
+    const filters = req.body || {};
+    let query = {};
+
+    if (typeof filters === 'object' && filters !== null) {
+        Object.keys(filters).forEach((key) => {
+            if (filters[key] && filters[key] !== 'all') {
+                query[key] = filters[key];
+            }
+        });
+    }
+
+    try {
+        const records = await MintModel.find(query);
+        res.json(records);
+    } catch (error) {
+        res.status(500).json({ error: '获取 mint 记录时出错' });
+    }
 });
+
   
 app.get('/transfer/records', async (req, res) => {
   const records = await TransferModel.find();
