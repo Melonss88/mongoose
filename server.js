@@ -804,7 +804,6 @@ async function fetchDataAndSave(to, tokenId, uri) {
 
 async function fetchDataAndSaveNew(to, tokenId, uri) {
     try {
-		console.log('uri',uri)
         const response = await axios.get(uri);
         const jsonDataList = response.data;
         const tokenIdNum = Number(tokenId);
@@ -847,54 +846,57 @@ contract.on("mintEvent", async (to, tokenId, uri) => {
 	await fetchDataAndSaveNew(to, tokenId, uri);
 });
 
-// 监听nftTransferEvent事件
-contract.on("nftTransferEvent", async (from, to, tokenId, price) => {
-	console.log('监听nftTransferEvent', from, to, tokenId, price);
+async function nftTransferFn(from, to, tokenId, price) {
 	try {
-	  const newTransfer = new TransferModel({
-		from,
-		to,
-		tokenId,
-		price: ethers.utils.formatUnits(price),
-		timestamp: new Date(),
-	  });
-	  await newTransfer.save();
-	  console.log('Transfer saved to MongoDB success~!');
-  
-	  // 获取新的URI
-	  const mintRecord = await MintModel.findOne({ tokenId });
-	  if (mintRecord) {
-		const response = await axios.get(mintRecord.uri);
-		const jsonData = response.data;
-  
-		// 更新mints记录
-		const updatedMintRecord = await MintModel.findOneAndUpdate(
-		  { tokenId },
-		  {
-			to,
-			name: jsonData.name,
-			imageURL: jsonData.imageURL,
-			color: jsonData.color,
-			gender: jsonData.gender,
-			rarity: jsonData.rarity,
-			price: jsonData.price,
-			accessories: jsonData.accessories,
-			timestamp: new Date()
-		  },
-		  { new: true }
-		);
-  
-		if (updatedMintRecord) {
-		  console.log('Mint record updated to new address ！');
+		const newTransfer = new TransferModel({
+		  from,
+		  to,
+		  tokenId,
+		  price: ethers.utils.formatUnits(price),
+		  timestamp: new Date(),
+		});
+		await newTransfer.save();
+		console.log('Transfer saved to MongoDB success~!');
+	
+		// 获取新的URI
+		const mintRecord = await MintModel.findOne({ tokenId });
+		if (mintRecord) {
+		  const response = await axios.get(mintRecord.uri);
+		  const jsonData = response.data;
+	
+		  // 更新mints记录
+		  const updatedMintRecord = await MintModel.findOneAndUpdate(
+			{ tokenId },
+			{
+			  to,
+			  name: jsonData.name,
+			  imageURL: jsonData.imageURL,
+			  color: jsonData.color,
+			  gender: jsonData.gender,
+			  rarity: jsonData.rarity,
+			  price: jsonData.price,
+			  accessories: jsonData.accessories,
+			  timestamp: new Date()
+			},
+			{ new: true }
+		  );
+	
+		  if (updatedMintRecord) {
+			console.log('Mint record updated to new address ！');
+		  } else {
+			console.log('Mint record not found for tokenId:', tokenId);
+		  }
 		} else {
 		  console.log('Mint record not found for tokenId:', tokenId);
 		}
-	  } else {
-		console.log('Mint record not found for tokenId:', tokenId);
+	  } catch (error) {
+		console.error('Error saving transfer:', error);
 	  }
-	} catch (error) {
-	  console.error('Error saving transfer:', error);
-	}
+}
+// 监听nftTransferEvent事件
+contract.on("nftTransferEvent", async (from, to, tokenId, price) => {
+	console.log('监听nftTransferEvent', from, to, tokenId, price);
+	// await nftTransferFn(from, to, tokenId, price)
 });
 
 
@@ -946,33 +948,38 @@ async function addBannerConfig () {
 async function addpPopularNFTs() {
 	const popularConfig = [
 		{
-		  id: "0",
-		  name: "ducklon",
-		  price: "0.0005",
+		  id: "2",
+		  name:'Ducklon',
+		  website: "Metanebula",
+		  price: "0.0001",
 		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular1.png'
 		},
 		{
-		  id: "1",
-		  name: "ducklon",
-		  price: "0.001",
+		  id: "21348",
+		  name:'Lil Pudgy',
+		  website: "Lil Pudgy",
+		  price: "0.725",
 		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular2.png'
 		},
 		{
-		  id: "2",
-		  name: "ducklon",
-		  price: "0.0001",
+		  id: "64443100",
+		  name:'',
+		  website: "Rune Stone",
+		  price: "0.725",
 		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular3.png'
 		},
 		{
-		  id: "3",
-		  name: "ducklon",
-		  price: "0.0005",
+		  id: "965",
+		  name:'',
+		  website: "PolyCat",
+		  price: " 0.725",
 		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular4.png'
 		},
 		{
-		  id: "4",
-		  name: "ducklon",
-		  price: "0.005",
+		  id: "587",
+		  name:'Quirkies',
+		  website: "Quirkies Originals",
+		  price: " 0.725",
 		  imgURL:'https://harlequin-obliged-nightingale-746.mypinata.cloud/ipfs/QmVYj5m8rrSPM95Qy9mB2BLSAbCC4YZCNW9PqRrbzvTVyx/popular5.png'
 		}
 	  ];
@@ -982,7 +989,8 @@ async function addpPopularNFTs() {
 			  id: popularConfig[i].id,  
 			  name: popularConfig[i].name,
 			  price: popularConfig[i].price,
-			  imgURL: popularConfig[i].imgURL
+			  imgURL: popularConfig[i].imgURL,
+			  website:popularConfig[i].website
 			});
 	  
 			await config.save();
@@ -1020,7 +1028,7 @@ async function addFilterConfig() {
 		},
 		{
 			name:'price',
-			items:''
+			items:['','']
 		}
 	]
 
@@ -1050,7 +1058,18 @@ app.post('/mint/records', async (req, res) => {
     if (typeof filters === 'object' && filters !== null) {
         Object.keys(filters).forEach((key) => {
             if (filters[key] && filters[key] !== 'all') {
-                query[key] = filters[key];
+                if (key === 'price' && Array.isArray(filters[key])) {
+                    const [minPrice, maxPrice] = filters[key];
+
+                    if (minPrice !== "" && maxPrice !== "") {
+                        query['price'] = {
+                            $gte: parseFloat(minPrice),
+                            $lte: parseFloat(maxPrice)
+                        };
+                    }
+                } else {
+                    query[key] = filters[key];
+                }
             }
         });
     }
