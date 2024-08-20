@@ -1,6 +1,7 @@
 const TransferModel = require('../models/TransferRecord');
 const MintModel = require('../models/Mint');
 const axios = require('axios');
+const { ethers } = require("ethers");
 
 let contract;
 
@@ -60,7 +61,7 @@ exports.initializeContract = (contractInstance) => {
     setContractInstance(contractInstance);
     contract.on("nftTransferEvent", async (from, to, tokenId, price) => {
         console.log('监听nftTransferEvent', from, to, tokenId, price);
-        // await nftTransferFn(from, to, tokenId, price)
+        await nftTransferFn(from, to, tokenId, price)
     });
 };
 
